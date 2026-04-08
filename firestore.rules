@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "yutanpo.fm@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.role in ['admin', 'driver'];
+    }
+
+    function isValidDelivery(data) {
+      return data.keys().hasAll(['customerName', 'address', 'packageId', 'priority', 'status']) &&
+             data.customerName is string && data.customerName.size() > 0 &&
+             data.address is string && data.address.size() > 0 &&
+             data.priority in ['high', 'medium', 'low'] &&
+             data.status in ['pending', 'delivering', 'completed', 'absent', 'redelivery'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(uid) && isValidUser(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /deliveries/{deliveryId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && isValidDelivery(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /riskReports/{reportId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+  }
+}

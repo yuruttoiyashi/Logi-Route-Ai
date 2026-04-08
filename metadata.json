@@ -1,0 +1,5 @@
+{
+  "name": "LogiRoute AI",
+  "description": "Logistics delivery route optimization and AI-powered delay risk analysis platform.",
+  "requestFramePermissions": ["geolocation"]
+}

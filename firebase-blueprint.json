@@ -1,0 +1,69 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "driver"] },
+        "photoURL": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Delivery": {
+      "title": "Delivery",
+      "description": "Delivery task information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerName": { "type": "string" },
+        "address": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "packageId": { "type": "string" },
+        "priority": { "type": "string", "enum": ["high", "medium", "low"] },
+        "timeWindowStart": { "type": "string" },
+        "timeWindowEnd": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "delivering", "completed", "absent", "redelivery"] },
+        "driverId": { "type": "string" },
+        "driverName": { "type": "string" },
+        "notes": { "type": "string" },
+        "redeliveryCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["customerName", "address", "packageId", "priority", "status"]
+    },
+    "RiskReport": {
+      "title": "RiskReport",
+      "description": "AI generated delay risk analysis",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "riskLevel": { "type": "string", "enum": ["high", "medium", "low"] },
+        "reason": { "type": "string" },
+        "suggestions": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["date", "riskLevel", "reason", "suggestions"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/deliveries/{deliveryId}": {
+      "schema": "Delivery",
+      "description": "Delivery tasks"
+    },
+    "/riskReports/{reportId}": {
+      "schema": "RiskReport",
+      "description": "AI risk analysis reports"
+    }
+  }
+}
