@@ -1,287 +1,115 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { collection, query, onSnapshot } from 'firebase/firestore';
-import {
-  Package,
-  CheckCircle2,
-  Clock,
-  AlertTriangle,
-  BrainCircuit,
-  TrendingUp,
-  ArrowRight,
-} from 'lucide-react';
-import { db } from '../lib/firebase.ts';
-import { analyzeDelayRisk } from '../services/geminiService.ts';
-import StatCard from '../components/StatCard.tsx';
-import { motion } from 'motion/react';
-import { cn } from '../lib/utils.ts';
+import React, { useMemo } from 'react';
+import type { Delivery } from '../types/delivery';
 
-type Delivery = {
-  id: string;
-  customerName?: string;
-  address?: string;
-  status: string;
-  priority?: '高' | '中' | '低';
-  scheduledTime?: string;
-  routeOrder?: number;
-  driverName?: string;
-  createdAt?: any;
+type DashboardPageProps = {
+  deliveries: Delivery[];
+  loading?: boolean;
 };
 
-type RiskReport = {
-  riskLevel: 'high' | 'medium' | 'low';
-  reason: string;
-  suggestions: string;
-};
+function countByStatus(deliveries: Delivery[], status: string) {
+  return deliveries.filter((d) => d.status === status).length;
+}
 
-const DashboardPage = () => {
-  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-  const [riskReport, setRiskReport] = useState<RiskReport | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
-
-  useEffect(() => {
-    const q = query(collection(db, 'deliveries'));
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const list = snapshot.docs.map(
-          (doc) =>
-            ({
-              id: doc.id,
-              ...doc.data(),
-            }) as Delivery
-        );
-
-        setDeliveries(list);
-      },
-      (error) => {
-        console.error('Firestore読み込みエラー:', error);
-      }
-    );
-
-    return () => unsubscribe();
-  }, []);
-
-  const stats = useMemo(() => {
+export default function DashboardPage({
+  deliveries,
+  loading = false,
+}: DashboardPageProps) {
+  const summary = useMemo(() => {
     const total = deliveries.length;
-    const completed = deliveries.filter((d) => d.status === '完了').length;
-    const pendingOnly = deliveries.filter((d) => d.status === '未対応').length;
-    const delivering = deliveries.filter((d) => d.status === '配送中').length;
-    const redelivery = deliveries.filter((d) => d.status === '再配達').length;
+    const pending = countByStatus(deliveries, 'pending');
+    const inTransit = countByStatus(deliveries, 'in_transit');
+    const delivered = countByStatus(deliveries, 'delivered');
+    const redelivery = countByStatus(deliveries, 'redelivery');
 
     return {
       total,
-      completed,
-      pending: pendingOnly + delivering,
+      pending,
+      inTransit,
+      delivered,
       redelivery,
     };
   }, [deliveries]);
 
-  const driverProgress = useMemo(() => {
-    const grouped = deliveries.reduce<Record<string, Delivery[]>>((acc, delivery) => {
-      const key = delivery.driverName || '未割当';
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(delivery);
-      return acc;
-    }, {});
-
-    const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'];
-
-    return Object.entries(grouped).map(([name, list], index) => {
-      const total = list.length;
-      const completed = list.filter((d) => d.status === '完了').length;
-
-      return {
-        name,
-        completed,
-        total,
-        color: colors[index % colors.length],
-      };
-    });
+  const recentDeliveries = useMemo(() => {
+    return [...deliveries]
+      .sort((a, b) => {
+        const aOrder = a.routeOrder ?? 9999;
+        const bOrder = b.routeOrder ?? 9999;
+        return aOrder - bOrder;
+      })
+      .slice(0, 8);
   }, [deliveries]);
 
-  const handleAnalyze = async () => {
-  if (deliveries.length === 0) return;
-
-  setAnalyzing(true);
-
-  try {
-    const result = await analyzeDelayRisk(deliveries as any);
-    setRiskReport(result);
-  } catch (error: any) {
-    console.error('AIエラー詳細:', error);
-    alert(error?.message || 'AI分析に失敗しました');
-  } finally {
-    setAnalyzing(false);
-  }
-};
-
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">運行状況ダッシュボード</h2>
-          <p className="text-slate-500">リアルタイムの配送データとAIによるリスク分析</p>
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800">ダッシュボード</h1>
+        <p className="mt-1 text-sm text-slate-500">配送状況の概要を確認できます。</p>
+      </div>
+
+      {loading ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          読み込み中...
         </div>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <SummaryCard title="総配送件数" value={summary.total} />
+            <SummaryCard title="未対応" value={summary.pending} />
+            <SummaryCard title="配送中" value={summary.inTransit} />
+            <SummaryCard title="配達完了" value={summary.delivered} />
+            <SummaryCard title="再配達" value={summary.redelivery} />
+          </div>
 
-        <button
-          onClick={handleAnalyze}
-          disabled={analyzing || deliveries.length === 0}
-          className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 disabled:opacity-50"
-        >
-          {analyzing ? (
-            <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-white" />
-          ) : (
-            <BrainCircuit size={20} />
-          )}
-          AI遅延リスク分析を実行
-        </button>
-      </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold text-slate-800">直近の配送一覧</h2>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="本日の総配送"
-          value={stats.total}
-          icon={Package}
-          color="bg-blue-600"
-          delay={0.1}
-        />
-        <StatCard
-          title="配送完了"
-          value={stats.completed}
-          icon={CheckCircle2}
-          color="bg-emerald-500"
-          delay={0.2}
-          trend={{ value: 12, isUp: true }}
-        />
-        <StatCard
-          title="未完了・配送中"
-          value={stats.pending}
-          icon={Clock}
-          color="bg-amber-500"
-          delay={0.3}
-        />
-        <StatCard
-          title="再配達・不在"
-          value={stats.redelivery}
-          icon={AlertTriangle}
-          color="bg-rose-500"
-          delay={0.4}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-            <div className="mb-6 flex items-center justify-between">
-              <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                <TrendingUp size={20} className="text-blue-600" />
-                配送進捗状況
-              </h3>
-
-              <button className="flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-700">
-                詳細を見る <ArrowRight size={16} />
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              {driverProgress.length === 0 ? (
-                <p className="text-sm text-slate-400">配送データがありません。</p>
-              ) : (
-                driverProgress.map((driver, i) => (
-                  <div key={driver.name} className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-bold text-slate-700">{driver.name}</span>
-                      <span className="font-medium text-slate-500">
-                        {driver.completed} / {driver.total} 完了
-                      </span>
-                    </div>
-
-                    <div className="h-3 overflow-hidden rounded-full bg-slate-100 shadow-inner">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{
-                          width:
-                            driver.total === 0
-                              ? '0%'
-                              : `${(driver.completed / driver.total) * 100}%`,
-                        }}
-                        transition={{ duration: 1, delay: 0.5 + i * 0.1 }}
-                        className={cn('h-full rounded-full', driver.color)}
-                      />
-                    </div>
-                  </div>
-                ))
-              )}
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-slate-500">
+                    <th className="px-3 py-3">顧客名</th>
+                    <th className="px-3 py-3">住所</th>
+                    <th className="px-3 py-3">状態</th>
+                    <th className="px-3 py-3">担当</th>
+                    <th className="px-3 py-3">予定時刻</th>
+                    <th className="px-3 py-3">順番</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentDeliveries.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-3 py-6 text-center text-slate-400">
+                        データがありません
+                      </td>
+                    </tr>
+                  ) : (
+                    recentDeliveries.map((delivery) => (
+                      <tr key={delivery.id} className="border-b border-slate-100">
+                        <td className="px-3 py-3">{delivery.customerName ?? '-'}</td>
+                        <td className="px-3 py-3">{delivery.address ?? '-'}</td>
+                        <td className="px-3 py-3">{delivery.status}</td>
+                        <td className="px-3 py-3">{delivery.driverName ?? '-'}</td>
+                        <td className="px-3 py-3">{delivery.scheduledTime ?? '-'}</td>
+                        <td className="px-3 py-3">{delivery.routeOrder ?? '-'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
-
-        <div className="space-y-6">
-          <div
-            className={cn(
-              'rounded-2xl border p-6 shadow-sm transition-all duration-500',
-              riskReport ? 'border-blue-100 bg-blue-50' : 'border-slate-100 bg-white'
-            )}
-          >
-            <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900">
-              <BrainCircuit size={20} className="text-blue-600" />
-              AI分析レポート
-            </h3>
-
-            {riskReport ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase text-slate-400">
-                    リスクレベル:
-                  </span>
-                  <span
-                    className={cn(
-                      'rounded-full px-3 py-1 text-xs font-bold uppercase',
-                      riskReport.riskLevel === 'high'
-                        ? 'bg-rose-500 text-white'
-                        : riskReport.riskLevel === 'medium'
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-emerald-500 text-white'
-                    )}
-                  >
-                    {riskReport.riskLevel === 'high'
-                      ? '高'
-                      : riskReport.riskLevel === 'medium'
-                      ? '中'
-                      : '低'}
-                  </span>
-                </div>
-
-                <div>
-                  <p className="mb-1 text-sm font-bold text-slate-700">分析結果:</p>
-                  <p className="text-sm leading-relaxed text-slate-600">
-                    {riskReport.reason}
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
-                  <p className="mb-1 text-sm font-bold text-blue-700">推奨アクション:</p>
-                  <p className="text-sm italic leading-relaxed text-slate-600">
-                    "{riskReport.suggestions}"
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4 py-12 text-center">
-                <div className="inline-flex rounded-full bg-slate-50 p-4 text-slate-200">
-                  <BrainCircuit size={48} />
-                </div>
-                <p className="px-4 text-sm text-slate-400">
-                  右上のボタンからAI分析を実行して、配送遅延リスクを予測します。
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
-};
+}
 
-export default DashboardPage;
+function SummaryCard({ title, value }: { title: string; value: number }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="text-sm text-slate-500">{title}</p>
+      <p className="mt-2 text-3xl font-bold text-slate-800">{value}</p>
+    </div>
+  );
+}

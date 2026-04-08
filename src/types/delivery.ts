@@ -1,30 +1,24 @@
 export type DeliveryStatus =
   | 'pending'
-  | 'in_progress'
-  | 'completed'
-  | 'redelivery';
+  | 'scheduled'
+  | 'in_transit'
+  | 'delivered'
+  | 'redelivery'
+  | 'cancelled';
+
+export type DeliveryPriority = 'low' | 'medium' | 'high';
 
 export interface Delivery {
   id: string;
-  customerName: string;
-  address: string;
+  customerName?: string;
+  address?: string;
   lat: number;
   lng: number;
-  status: DeliveryStatus;
-  driverName: string;
-  scheduledTime: string;
-  routeOrder: number;
-  createdAt?: unknown;
-  updatedAt?: unknown;
-}
-
-export interface DeliveryInput {
-  customerName: string;
-  address: string;
-  lat: number;
-  lng: number;
-  status: DeliveryStatus;
-  driverName: string;
-  scheduledTime: string;
-  routeOrder: number;
+  status: DeliveryStatus | string;
+  driverName?: string;
+  scheduledTime?: string;
+  routeOrder?: number;
+  priority?: DeliveryPriority | string;
+  createdAt?: string;
+  updatedAt?: string;
 }
