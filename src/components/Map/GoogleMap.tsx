@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { Delivery } from '../../types/delivery';
 
+console.log('MAP KEY:', import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
+
 type Props = {
   deliveries: Delivery[];
 };
