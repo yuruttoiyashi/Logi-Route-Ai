@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import {
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithRedirect,
+} from 'firebase/auth';
 import { auth } from '../lib/firebase';
 
 export default function LoginPage() {
@@ -23,7 +27,7 @@ export default function LoginPage() {
     try {
       setErrorMessage('');
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      await signInWithRedirect(auth, provider);
     } catch (error) {
       console.error(error);
       setErrorMessage('Googleログインに失敗しました。');
