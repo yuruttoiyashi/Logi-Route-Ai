@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -29,7 +30,14 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
 
-          <Route path="/" element={<Layout />}>
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route
               path="dashboard"
@@ -39,17 +47,12 @@ export default function App() {
               path="deliveries"
               element={<Deliveries deliveries={deliveries} loading={loading} />}
             />
-            <Route
-              path="map"
-              element={<MapView deliveries={deliveries} loading={loading} />}
-            />
+            <Route path="map" element={<MapView deliveries={deliveries} loading={loading} />} />
             <Route
               path="driver-stats"
               element={<DriverStats deliveries={deliveries} loading={loading} />}
             />
           </Route>
-
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
