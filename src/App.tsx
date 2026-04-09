@@ -47,12 +47,17 @@ export default function App() {
               path="deliveries"
               element={<Deliveries deliveries={deliveries} loading={loading} />}
             />
-            <Route path="map" element={<MapView deliveries={deliveries} loading={loading} />} />
+            <Route
+              path="map"
+              element={<MapView deliveries={deliveries} loading={loading} />}
+            />
             <Route
               path="driver-stats"
               element={<DriverStats deliveries={deliveries} loading={loading} />}
             />
           </Route>
+
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
