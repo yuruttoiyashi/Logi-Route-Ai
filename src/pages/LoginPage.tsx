@@ -18,32 +18,25 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-  const init = async () => {
-    try {
-      const result = await getRedirectResult(auth);
-      console.log('[LoginPage] redirect result:', result?.user?.email ?? null);
-      if (result?.user) {
-        navigate('/dashboard', { replace: true });
-        return;
+    const init = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        console.log('[LoginPage] redirect result:', result?.user?.email ?? null);
+
+        if (result?.user) {
+          navigate('/dashboard', { replace: true });
+          return;
+        }
+      } catch (error) {
+        console.error('[LoginPage] redirect result error:', error);
       }
-    } catch (error) {
-      console.error('[LoginPage] redirect result error:', error);
-    }
-  };
+    };
 
-  init();
-
-  const unsubscribe = onAuthStateChanged(auth, (user) => {
-    console.log('[LoginPage] auth state:', user?.email ?? null);
-    if (user) {
-      navigate('/dashboard', { replace: true });
-    }
-  });
-
-  return () => unsubscribe();
-}, [navigate]);
+    void init();
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log('[LoginPage] auth state:', user?.email ?? null);
+
       if (user) {
         navigate('/dashboard', { replace: true });
       }
@@ -143,6 +136,7 @@ export default function LoginPage() {
                   id="email"
                   name="email"
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@company.com"
@@ -161,6 +155,7 @@ export default function LoginPage() {
                   id="password"
                   name="password"
                   type="password"
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="パスワード"
