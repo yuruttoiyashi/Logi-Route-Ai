@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   GoogleAuthProvider,
-  getRedirectResult,
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  signInWithRedirect,
+  signInWithPopup,
 } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../lib/firebase';
@@ -18,21 +17,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        console.log('[LoginPage] redirect result:', result?.user?.email ?? null);
-
-        if (result?.user) {
-          navigate('/dashboard', { replace: true });
-          return;
-        }
-      } catch (error) {
-        console.error('[LoginPage] redirect result error:', error);
-      }
-    };
-
-    void init();
+    console.log('[LoginPage] rendered');
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       console.log('[LoginPage] auth state:', user?.email ?? null);
@@ -51,10 +36,12 @@ export default function LoginPage() {
     try {
       setSubmitting(true);
       setErrorMessage('');
+
       await signInWithEmailAndPassword(auth, email, password);
+
       navigate('/dashboard', { replace: true });
     } catch (error) {
-      console.error(error);
+      console.error('[LoginPage] email login error:', error);
       setErrorMessage('メールログインに失敗しました。');
     } finally {
       setSubmitting(false);
@@ -65,11 +52,17 @@ export default function LoginPage() {
     try {
       setSubmitting(true);
       setErrorMessage('');
+
       const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+
+      console.log('[LoginPage] popup login:', result.user?.email ?? null);
+
+      navigate('/dashboard', { replace: true });
     } catch (error) {
-      console.error(error);
+      console.error('[LoginPage] google login error:', error);
       setErrorMessage('Googleログインに失敗しました。');
+    } finally {
       setSubmitting(false);
     }
   };
