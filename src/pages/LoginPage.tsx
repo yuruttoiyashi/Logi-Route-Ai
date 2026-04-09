@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   GoogleAuthProvider,
+  getRedirectResult,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithRedirect,
@@ -17,6 +18,20 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    const init = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          navigate('/dashboard', { replace: true });
+          return;
+        }
+      } catch (error) {
+        console.error('Redirect result error:', error);
+      }
+    };
+
+    init();
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         navigate('/dashboard', { replace: true });
