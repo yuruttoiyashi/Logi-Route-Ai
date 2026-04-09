@@ -18,19 +18,30 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result?.user) {
-          navigate('/dashboard', { replace: true });
-          return;
-        }
-      } catch (error) {
-        console.error('Redirect result error:', error);
+  const init = async () => {
+    try {
+      const result = await getRedirectResult(auth);
+      console.log('[LoginPage] redirect result:', result?.user?.email ?? null);
+      if (result?.user) {
+        navigate('/dashboard', { replace: true });
+        return;
       }
-    };
+    } catch (error) {
+      console.error('[LoginPage] redirect result error:', error);
+    }
+  };
 
-    init();
+  init();
+
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    console.log('[LoginPage] auth state:', user?.email ?? null);
+    if (user) {
+      navigate('/dashboard', { replace: true });
+    }
+  });
+
+  return () => unsubscribe();
+}, [navigate]);
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {

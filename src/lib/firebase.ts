@@ -20,9 +20,12 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// ログイン状態をブラウザに保持
-setPersistence(auth, browserLocalPersistence).catch((error) => {
-  console.error('Failed to set auth persistence:', error);
-});
+export const authReady = setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log('[firebase] persistence: browserLocalPersistence set');
+  })
+  .catch((error) => {
+    console.error('[firebase] persistence error:', error);
+  });
 
 export default app;

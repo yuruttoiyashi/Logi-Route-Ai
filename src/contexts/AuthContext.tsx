@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { auth, authReady } from '../lib/firebase';
 
 type AuthContextType = {
   user: User | null;
@@ -15,12 +15,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setLoading(false);
+    let unsubscribe: (() => void) | undefined;
+
+    authReady.finally(() => {
+      unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        console.log('[AuthContext] onAuthStateChanged:', firebaseUser?.email ?? null);
+        setUser(firebaseUser);
+        setLoading(false);
+      });
     });
 
-    return () => unsubscribe();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   const value = useMemo(
@@ -39,10 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-
   if (!context) {
     throw new Error('useAuth must be used within AuthProvider');
   }
-
   return context;
 }
